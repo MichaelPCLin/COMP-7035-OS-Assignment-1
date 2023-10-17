@@ -98,11 +98,13 @@ timer_elapsed (int64_t then)
 
 struct list sleeping_threads;
 
+bool wakeup_time_less(const struct list_elem *a, const struct list_elem *b, void *aux);
+
 void timer_sleep(int64_t ticks)
 {
     int64_t wakeup_time = timer_ticks() + ticks;
 
-    printf("test\n");
+    //printf("test\n");
     // Get the current thread.
     struct thread *cur = thread_current();
 
@@ -204,13 +206,36 @@ timer_print_stats (void)
 {
   printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
 }
+
+void wake_up_sleeping_threads(void);
 
 /* Timer interrupt handler. */
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
+  wake_up_sleeping_threads();
   thread_tick ();
+}
+
+void wake_up_sleeping_threads()
+{
+    struct list_elem *e = list_begin(&sleeping_threads);
+
+    while (e != list_end(&sleeping_threads))
+    {
+        struct thread *t = list_entry(e, struct thread, sleep_elem);
+
+        if (timer_ticks() >= t->wakeup_time)
+        {
+            e = list_remove(e);  // Remove from sleeping list and move to the next element
+            thread_unblock(t);   // Unblock the thread
+        }
+        else
+        {
+            break;  // Since the list is sorted, if this thread shouldn't wake up, then none after it should either
+        }
+    }
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
