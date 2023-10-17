@@ -86,14 +86,53 @@ timer_elapsed (int64_t then)
 
 /* Sleeps for approximately TICKS timer ticks.  Interrupts must
    be turned on. */
-void
-timer_sleep (int64_t ticks) 
-{
-  int64_t start = timer_ticks ();
+//void
+// timer_sleep (int64_t ticks) 
+// {
+//   int64_t start = timer_ticks ();
 
-  ASSERT (intr_get_level () == INTR_ON);
-  while (timer_elapsed (start) < ticks) 
-    thread_yield ();
+//   ASSERT (intr_get_level () == INTR_ON);
+//   while (timer_elapsed (start) < ticks) 
+//     thread_yield ();
+// }
+
+struct list sleeping_threads;
+
+void timer_sleep(int64_t ticks)
+{
+    int64_t wakeup_time = timer_ticks() + ticks;
+
+    printf("test\n");
+    // Get the current thread.
+    struct thread *cur = thread_current();
+
+    // Disable interrupts to ensure atomic operations.
+    enum intr_level old_level = intr_disable();
+
+    // Set the wakeup time for the current thread.
+    cur->wakeup_time = wakeup_time;
+
+    // Insert the current thread into the sleeping threads list.
+    // This would ideally be in sorted order.
+    list_insert_ordered(&sleeping_threads, &cur->sleep_elem, 
+                        (list_less_func *) &wakeup_time_less, NULL);
+
+    // Block the current thread. It will be unblocked when its wakeup time arrives.
+    thread_block();
+
+    // Restore the interrupt level.
+    intr_set_level(old_level);
+}
+
+// Helper function for inserting in sorted order based on wakeup_time.
+bool wakeup_time_less(const struct list_elem *a,
+                      const struct list_elem *b,
+                      void *aux)
+{
+    (void) aux;
+    struct thread *ta = list_entry(a, struct thread, sleep_elem);
+    struct thread *tb = list_entry(b, struct thread, sleep_elem);
+    return ta->wakeup_time < tb->wakeup_time;
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
