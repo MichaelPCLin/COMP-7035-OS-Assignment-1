@@ -57,7 +57,9 @@ static unsigned thread_ticks;   /* # of timer ticks since last yield. */
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
-bool thread_mlfqs;
+bool thread_mlfqs = true;
+
+static int load_avg;
 
 static void kernel_thread (thread_func *, void *aux);
 
@@ -100,6 +102,8 @@ thread_init (void)
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
+  load_avg=0;
+  initial_thread->recent_cpu = 0;
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -349,33 +353,82 @@ thread_get_priority (void)
 
 /* Sets the current thread's nice value to NICE. */
 void
-thread_set_nice (int nice UNUSED) 
+thread_set_nice (int nice) 
 {
-  /* Not yet implemented. */
+  ASSERT (nice >= NICE_MIN && nice <= NICE_MAX);
+  struct thread* t = thread_current ();
+  t->nice = nice;
+
 }
 
 /* Returns the current thread's nice value. */
 int
 thread_get_nice (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return thread_current()->nice;
 }
 
 /* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return (int)(load_avg*100);
 }
+
+/* calculate recent_cpu times
+*  recent_cpu = (2*load_avg)/(2*load_avg + 1) * recent_cpu + nice
+*/
+void calculate_recent_cpu (struct thread *cur, void *aux UNUSED)
+  {
+  ASSERT (is_thread (cur));
+
+  if(cur != idle_thread)
+    {
+      int load = load_avg*2;
+      int coefficiant = load/(load+1);
+      cur->recent_cpu = coefficiant*cur->recent_cpu+cur->nice;
+    }
+  }
+void calculate_recent_cpu_for_all(void)
+{
+  thread_foreach(calculate_recent_cpu, NULL);
+}
+/* Calculate load_average
+*  (59/60)*load_avg + (1/60) *ready_threads
+*/
+void calculate_load_avg (void)
+{
+  struct thread *cur;
+  int ready_list_threads;
+  int ready_threads;
+  float float_load_avg;
+
+  cur = thread_current ();
+  ready_list_threads = list_size (&ready_list);
+
+  if(cur != idle_thread)
+    {
+      ready_threads = ready_list_threads +1;
+    }
+  else
+    { 
+      ready_threads = ready_list_threads;
+    }
+  float_load_avg = (((59/60)*load_avg) + ((1/60) *ready_threads));
+  //float_load_avg=load_avg+(1/60)*ready_threads;
+  //printf("float_load_avg %f \n", float_load_avg);
+
+  load_avg = (((59/60)*load_avg) + ((int)(1/60) *ready_threads));
+  //printf("%d", load_avg);
+
+}
+
 
 /* Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return (int)(thread_current()->recent_cpu*100);
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.

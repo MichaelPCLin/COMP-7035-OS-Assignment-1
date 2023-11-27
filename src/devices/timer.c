@@ -213,6 +213,17 @@ void wake_up_sleeping_threads(void);
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
+  if(thread_mlfqs){
+    struct thread *cur;
+    cur = thread_current ();
+    if (cur->status == THREAD_RUNNING){
+      cur->recent_cpu = cur->recent_cpu +1;
+    }
+    if(ticks%TIMER_FREQ ==0){
+      calculate_load_avg();
+      calculate_recent_cpu_for_all();
+    }
+  }
   ticks++;
   wake_up_sleeping_threads();
   thread_tick ();
