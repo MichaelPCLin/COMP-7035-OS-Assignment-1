@@ -108,18 +108,17 @@ void timer_sleep(int64_t ticks)
     // Get the current thread.
     struct thread *cur = thread_current();
 
-    // Disable interrupts to ensure atomic operations.
+    // Disable interrupts.
     enum intr_level old_level = intr_disable();
 
     // Set the wakeup time for the current thread.
     cur->wakeup_time = wakeup_time;
 
-    // Insert the current thread into the sleeping threads list.
-    // This would ideally be in sorted order.
+    // Insert the current thread into list of sleeping threads
     list_insert_ordered(&sleeping_threads, &cur->sleep_elem, 
                         (list_less_func *) &wakeup_time_less, NULL);
 
-    // Block the current thread. It will be unblocked when its wakeup time arrives.
+    // Block the current thread to be unblocked when wake up time arrives
     thread_block();
 
     // Restore the interrupt level.
@@ -207,12 +206,19 @@ timer_print_stats (void)
   printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
 }
 
-void wake_up_sleeping_threads(void);
+void wake_up_sleeping_threads(void); //declaration for prototype
 
 /* Timer interrupt handler. */
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
+  if (thread_mlfqs) {
+    update_recent_cpu();
+    if(timer_ticks() % TIMER_FREQ == 0) {
+      recalculate_recent_cpu();
+      calculate_load_avg();
+    }
+  }
   ticks++;
   wake_up_sleeping_threads();
   thread_tick ();

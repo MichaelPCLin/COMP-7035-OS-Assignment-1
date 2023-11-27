@@ -37,6 +37,9 @@ static struct thread *initial_thread;
 /* Lock used by allocate_tid(). */
 static struct lock tid_lock;
 
+/* average cpu load */
+static int load_avg;
+
 /* Stack frame for kernel_thread(). */
 struct kernel_thread_frame 
   {
@@ -349,9 +352,9 @@ thread_get_priority (void)
 
 /* Sets the current thread's nice value to NICE. */
 void
-thread_set_nice (int nice UNUSED) 
+thread_set_nice (int new_nice) 
 {
-  /* Not yet implemented. */
+  thread_current()->nice = new_nice;
 }
 
 /* Returns the current thread's nice value. */
@@ -359,9 +362,40 @@ int
 thread_get_nice (void) 
 {
   /* Not yet implemented. */
-  return 0;
+  return thread_current()->nice;
 }
 
+void thread_recalculate_priority (struct thread *t) {
+  if (!thread_mlfqs) return;
+  int new_priority = PRI_MAX - convert_to_integer_round_nearest(t->recent_cpu / 4) - (t->nice * 2);
+  t->priority = clamp_priority(new_priority);
+}
+
+/* Update recent_cpu for the running thread */
+void update_recent_cpu (void) {
+  struct thread *current_thread = thread_current();
+  if (current_thread != idle_thread) {
+    current_thread->recent_cpu = add_to_fixed_point(current_thread->recent_cpu, 1);
+  }
+}
+
+/* Recalculate recent_cpu for all threads */
+void recalculate_recent_cpu (struct thread *t) {
+  int load = divide_fixed_point_by_int(multiply_fixed_point_by_int(load_avg, 2), multiply_fixed_point_by_int(load_avg, 2) + 1);
+  t->recent_cpu = add_to_fixed_point(multiply_fixed_point(load, t->recent_cpu), t->nice);
+}
+
+/*gets system load average*/
+void calculate_load_avg (void)
+ {
+  int ready_threads = list_size(&ready_list);
+  if (thread_current() != idle_thread) {
+    ready_threads++;
+  }
+  load_avg = multiply_fixed_point_by_int(divide_fixed_point_by_int(int_to_fixed_point(59), 60), load_avg) + divide_fixed_point_by_int(int_to_fixed_point(ready_threads), 60);
+ }
+
+ /* why*/
 /* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) 
@@ -375,7 +409,7 @@ int
 thread_get_recent_cpu (void) 
 {
   /* Not yet implemented. */
-  return 0;
+  return thread_current()->recent_cpu;
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
