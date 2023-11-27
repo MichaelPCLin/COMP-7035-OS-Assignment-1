@@ -11,6 +11,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "fixed_point.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -380,9 +381,16 @@ void update_recent_cpu (void) {
 }
 
 /* Recalculate recent_cpu for all threads */
-void recalculate_recent_cpu (struct thread *t) {
-  int load = divide_fixed_point_by_int(multiply_fixed_point_by_int(load_avg, 2), multiply_fixed_point_by_int(load_avg, 2) + 1);
-  t->recent_cpu = add_to_fixed_point(multiply_fixed_point(load, t->recent_cpu), t->nice);
+void recalculate_recent_cpu(void) {
+    struct list_elem *e;
+
+    for (e = list_begin(&all_list); e != list_end(&all_list); e = list_next(e)) {
+        struct thread *t = list_entry(e, struct thread, allelem);
+
+        // Assuming load_avg and other necessary variables/functions are accessible here
+        int load = divide_fixed_point_by_int(multiply_fixed_point_by_int(load_avg, 2), multiply_fixed_point_by_int(load_avg, 2) + 1);
+        t->recent_cpu = add_to_fixed_points(multiply_fixed_points(load, t->recent_cpu), t->nice);
+    }
 }
 
 /*gets system load average*/
@@ -394,6 +402,17 @@ void calculate_load_avg (void)
   }
   load_avg = multiply_fixed_point_by_int(divide_fixed_point_by_int(int_to_fixed_point(59), 60), load_avg) + divide_fixed_point_by_int(int_to_fixed_point(ready_threads), 60);
  }
+
+ /* Clamp priority to be within valid bounds */
+int clamp_priority(int priority) {
+    if (priority > PRI_MAX) {
+        return PRI_MAX;
+    } else if (priority < PRI_MIN) {
+        return PRI_MIN;
+    } else {
+        return priority;
+    }
+}
 
  /* why*/
 /* Returns 100 times the system load average. */

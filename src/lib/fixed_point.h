@@ -30,8 +30,12 @@ static inline int fixed_point_to_int_round_nearest(int x) {
 }
 
 /* Add two fixed-point numbers */
-static inline int add_fixed_points(int x, int y) {
+static inline int add_to_fixed_points(int x, int y) {
     return x + y;
+}
+/* add a fixed-point number and an integer*/
+static inline int add_to_fixed_point(int x, int n) {
+    return x + n * F;
 }
 
 /* Subtract two fixed-point numbers */
@@ -67,5 +71,12 @@ static inline int divide_fixed_points(int x, int y) {
 static inline int divide_fixed_point_by_int(int x, int n) {
     return x / n;
 }
+
+/* Convert fixed-point to integer (rounding to nearest) */
+static inline int convert_to_integer_round_nearest(int x) {
+    return x >= 0 ? (x + F / 2) / F : (x - F / 2) / F;
+}
+
+
 
 #endif /* FIXED_POINT_H */
