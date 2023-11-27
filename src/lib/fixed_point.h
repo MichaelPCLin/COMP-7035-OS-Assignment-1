@@ -59,7 +59,8 @@ static inline int multiply_fixed_points(int x, int y) {
 
 /* Multiply a fixed-point number by an integer */
 static inline int multiply_fixed_point_by_int(int x, int n) {
-    return x * n;
+    int64_t temp = (int64_t)x * n;
+    return (int)(temp / F);
 }
 
 /* Divide two fixed-point numbers */
@@ -69,7 +70,7 @@ static inline int divide_fixed_points(int x, int y) {
 
 /* Divide a fixed-point number by an integer */
 static inline int divide_fixed_point_by_int(int x, int n) {
-    return x / n;
+    return (int)(((int64_t)x) / n);
 }
 
 /* Convert fixed-point to integer (rounding to nearest) */

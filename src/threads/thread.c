@@ -395,12 +395,50 @@ void recalculate_recent_cpu(void) {
 
 /*gets system load average*/
 void calculate_load_avg (void)
- {
+ { /*
   int ready_threads = list_size(&ready_list);
   if (thread_current() != idle_thread) {
     ready_threads++;
   }
+  printf("\nload avg:%d\n", load_avg);
   load_avg = multiply_fixed_point_by_int(divide_fixed_point_by_int(int_to_fixed_point(59), 60), load_avg) + divide_fixed_point_by_int(int_to_fixed_point(ready_threads), 60);
+  */
+     // Count the number of ready threads
+    int ready_threads = list_size(&ready_list);
+    if (thread_current() != idle_thread) {
+        ready_threads++;
+    }
+
+    // Convert 59 to fixed-point
+    int fixed_59 = int_to_fixed_point(59);
+    printf("Fixed 59: %d\n", fixed_59);
+
+    // Divide fixed-point 59 by 60
+    int term1_division = divide_fixed_point_by_int(fixed_59, 60);
+    printf("Term1 after division: %d\n", term1_division);
+
+    // Multiply the result by load_avg
+    int term1_fixed = multiply_fixed_point_by_int(term1_division, load_avg);
+    printf("Term1 (Fixed-Point): %d\n", term1_fixed);
+
+    // Convert ready_threads to fixed-point
+    int fixed_ready_threads = int_to_fixed_point(ready_threads);
+    printf("Fixed ready_threads: %d\n", fixed_ready_threads);
+
+    // Divide fixed-point ready_threads by 60
+    int term2_fixed = divide_fixed_point_by_int(fixed_ready_threads, 60);
+    printf("Term2 (Fixed-Point): %d\n", term2_fixed);
+
+    // Calculate the new load average
+    int new_load_avg = term1_fixed + term2_fixed;
+    printf("New Load Avg (Fixed-Point): %d\n", new_load_avg);
+
+    // Update the global load_avg variable
+    load_avg = new_load_avg;
+
+    // Convert new_load_avg to integer for printing
+    int converted_load_avg = thread_get_load_avg();
+    printf("Converted Load Avg: %d.%02d\n", converted_load_avg / 100, converted_load_avg % 100);
  }
 
  /* Clamp priority to be within valid bounds */
@@ -414,21 +452,22 @@ int clamp_priority(int priority) {
     }
 }
 
- /* why*/
 /* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+    int scaled_load_avg = multiply_fixed_point_by_int(load_avg, 100);
+    //printf("Scaled Load Avg (Fixed-Point): %d\n", scaled_load_avg);
+    //int converted_load_avg = fixed_point_to_int_round_zero(scaled_load_avg);
+    //printf("Converted Load Avg (Integer): %d\n", converted_load_avg);
+    return scaled_load_avg;
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void) 
 {
-  /* Not yet implemented. */
-  return thread_current()->recent_cpu;
+  return convert_to_integer_round_nearest(multiply_fixed_point_by_int(thread_current()->recent_cpu, 100));
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.

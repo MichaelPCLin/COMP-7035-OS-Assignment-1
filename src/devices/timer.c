@@ -217,6 +217,8 @@ timer_interrupt (struct intr_frame *args UNUSED)
     if(timer_ticks() % TIMER_FREQ == 0) {
       recalculate_recent_cpu();
       calculate_load_avg();
+
+      printf("\nLoad avg calculated at tick %d: %d\n", timer_ticks(), thread_get_load_avg());
     }
   }
   ticks++;
